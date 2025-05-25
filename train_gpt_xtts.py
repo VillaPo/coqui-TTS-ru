@@ -20,8 +20,8 @@ OUT_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "run", "trai
 # Training Parameters
 OPTIMIZER_WD_ONLY_ON_WEIGHTS = True  # for multi-gpu training please make it False
 START_WITH_EVAL = True  # if True it will star with evaluation
-BATCH_SIZE = 4  # set here the batch size
-GRAD_ACUMM_STEPS = 63  # set here the grad accumulation steps
+BATCH_SIZE = 3  # set here the batch size
+GRAD_ACUMM_STEPS = 84  # set here the grad accumulation steps
 # Note: we recommend that BATCH_SIZE * GRAD_ACUMM_STEPS need to be at least 252 for more efficient training. You can increase/decrease BATCH_SIZE but then set GRAD_ACUMM_STEPS accordingly.
 
 # Define here the dataset that you want to use for the fine-tuning on.
@@ -74,7 +74,7 @@ if not os.path.isfile(TOKENIZER_FILE) or not os.path.isfile(XTTS_CHECKPOINT):
 
 # TODO Training sentences generations
 SPEAKER_REFERENCE = [
-    os.path.join(os.path.dirname(os.path.abspath(__file__)), "speakers", "vlad.mp3")  # speaker reference to be used in training test sentences
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "speakers", "kozin.mp3")  # speaker reference to be used in training test sentences
 ]
 LANGUAGE = config_dataset.language
 
@@ -129,7 +129,7 @@ def main():
         optimizer="AdamW",
         optimizer_wd_only_on_weights=OPTIMIZER_WD_ONLY_ON_WEIGHTS,
         optimizer_params={"betas": [0.9, 0.96], "eps": 1e-8, "weight_decay": 1e-2},
-        lr=3e-06,  # learning rate
+        lr=5e-06,  # learning rate
         lr_scheduler="MultiStepLR",
         # it was adjusted accordly for the new step scheme
         lr_scheduler_params={"milestones": [15000, 30000, 40000, 50000, 60000], "gamma": 0.5, "last_epoch": -1},

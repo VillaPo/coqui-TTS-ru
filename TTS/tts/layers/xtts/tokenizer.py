@@ -625,7 +625,7 @@ class VoiceBpeTokenizer:
             "zh": 82,
             "ar": 166,
             "cs": 186,
-            "ru": 182,
+            "ru": 200,
             "nl": 251,
             "tr": 226,
             "ja": 71,
