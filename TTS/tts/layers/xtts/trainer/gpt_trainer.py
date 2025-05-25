@@ -486,6 +486,60 @@ class GPTTrainer(BaseTTS):
 
         state = self.xtts.get_compatible_checkpoint_state_dict(checkpoint_path)
 
+# --- BEGIN MODIFICATION: Adapt GPT vocabulary-dependent layers ---
+        gpt_text_embedding_key = "gpt.text_embedding.weight"
+        gpt_text_head_weight_key = "gpt.text_head.weight"
+        gpt_text_head_bias_key = "gpt.text_head.bias"
+
+        current_gpt_text_embedding_shape = self.xtts.gpt.text_embedding.weight.shape
+        current_gpt_text_head_weight_shape = self.xtts.gpt.text_head.weight.shape
+        current_gpt_text_head_bias_shape = self.xtts.gpt.text_head.bias.shape
+
+        if gpt_text_embedding_key in state and state[gpt_text_embedding_key].shape != current_gpt_text_embedding_shape:
+            print(f" > Adapting vocabulary size for GPT layers in XTTS checkpoint '{checkpoint_path}'.")
+
+            # Calculate number of new tokens
+            num_new_tokens = current_gpt_text_embedding_shape[0] - state[gpt_text_embedding_key].shape[0]
+
+            if num_new_tokens > 0:
+                # Adapt gpt.text_embedding.weight
+                old_emb_tensor = state[gpt_text_embedding_key]
+                new_rows_emb = torch.randn(num_new_tokens, old_emb_tensor.shape[1], device=old_emb_tensor.device, dtype=old_emb_tensor.dtype)
+                # Preserve the original last token's vector and move it to the new last position
+                original_last_token_emb_vec = old_emb_tensor[-1:, :]
+                # Concatenate old embeddings (excluding the last) with new random rows
+                expanded_emb_body = torch.cat([old_emb_tensor[:-1, :], new_rows_emb], dim=0)
+                # Add the original last token's vector as the new last token
+                final_expanded_emb = torch.cat([expanded_emb_body, original_last_token_emb_vec], dim=0)
+                state[gpt_text_embedding_key] = final_expanded_emb
+                print(f"   - Resized {gpt_text_embedding_key} from {old_emb_tensor.shape} to {final_expanded_emb.shape}")
+
+                # Adapt gpt.text_head.weight
+                if gpt_text_head_weight_key in state and state[gpt_text_head_weight_key].shape != current_gpt_text_head_weight_shape:
+                    old_head_weight_tensor = state[gpt_text_head_weight_key]
+                    # The number of output dimensions of text_head.weight corresponds to vocab size
+                    new_rows_head_weight = torch.randn(num_new_tokens, old_head_weight_tensor.shape[1], device=old_head_weight_tensor.device, dtype=old_head_weight_tensor.dtype)
+                    original_last_token_head_weight_vec = old_head_weight_tensor[-1:, :]
+                    expanded_head_weight_body = torch.cat([old_head_weight_tensor[:-1, :], new_rows_head_weight], dim=0)
+                    final_expanded_head_weight = torch.cat([expanded_head_weight_body, original_last_token_head_weight_vec], dim=0)
+                    state[gpt_text_head_weight_key] = final_expanded_head_weight
+                    print(f"   - Resized {gpt_text_head_weight_key} from {old_head_weight_tensor.shape} to {final_expanded_head_weight.shape}")
+
+
+                # Adapt gpt.text_head.bias
+                if gpt_text_head_bias_key in state and state[gpt_text_head_bias_key].shape != current_gpt_text_head_bias_shape:
+                    old_head_bias_tensor = state[gpt_text_head_bias_key]
+                    new_elements_head_bias = torch.zeros(num_new_tokens, device=old_head_bias_tensor.device, dtype=old_head_bias_tensor.dtype)
+                    original_last_token_head_bias_val = old_head_bias_tensor[-1:]
+                    expanded_head_bias_body = torch.cat([old_head_bias_tensor[:-1], new_elements_head_bias], dim=0)
+                    final_expanded_head_bias = torch.cat([expanded_head_bias_body, original_last_token_head_bias_val], dim=0)
+                    state[gpt_text_head_bias_key] = final_expanded_head_bias
+                    print(f"   - Resized {gpt_text_head_bias_key} from {old_head_bias_tensor.shape} to {final_expanded_head_bias.shape}")
+            else:
+                print(f" [!] Warning: Vocabulary size mismatch detected, but the new vocabulary is not larger. num_new_tokens={num_new_tokens}. Checkpoint not adapted for this case.")
+
+        # --- END MODIFICATION ---
+
         # load the model weights
         self.xtts.load_state_dict(state, strict=strict)
 
