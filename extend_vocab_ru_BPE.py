@@ -97,8 +97,49 @@ def extend_tokenizer(args):
     existing_tokenizer.model.save(old_tokenizer_path)
 
     # Тренируем новый токенайзер на новом корпусе (с ударениями и т.д.)
-    traindf = pd.read_csv(args.metadata_path, sep="|")
-    texts = [str(text).lower() for text in traindf.text.to_list()] # Приводим к нижнему регистру
+    texts = []
+    try:
+        # Предполагаем, что файл не содержит заголовка.
+        # Ошибка "Expected 3 fields" указывает, что корректные строки должны иметь 3 колонки.
+        # Используем on_bad_lines='warn', чтобы предупредить и пропустить строки с неверным числом полей.
+        # Текст для обучения токенизатора ожидается в третьей колонке (индекс 2).
+        traindf = pd.read_csv(
+            args.metadata_path,
+            sep="|",
+            header=None,
+            on_bad_lines='warn' # Можно заменить на 'skip', если предупреждения не нужны
+        )
+
+        if traindf.empty:
+            print(f"Ошибка: Файл метаданных {args.metadata_path} пуст или все строки были пропущены из-за ошибок.")
+            print("Невозможно продолжить обучение BPE токенизатора.")
+            return
+
+        # Проверяем количество колонок после чтения и пропуска некорректных строк.
+        # Исходя из ошибки "Expected 3 fields", текст должен быть в колонке с индексом 2.
+        if traindf.shape[1] >= 3:
+            texts = [str(text).lower() for text in traindf[2].to_list()]
+        elif traindf.shape[1] > 0: # Если колонок меньше 3, но хотя бы одна есть
+            print(f"Предупреждение: В данных из {args.metadata_path} обнаружено {traindf.shape[1]} колонок (ожидалось 3).")
+            print(f"Будет использована последняя доступная колонка (индекс {traindf.shape[1]-1}) для извлечения текста.")
+            texts = [str(text).lower() for text in traindf.iloc[:, -1].to_list()]
+        else: # traindf.shape[1] == 0, хотя это должно было быть поймано traindf.empty
+            print(f"Ошибка: Не удалось извлечь колонки из файла {args.metadata_path}.")
+            print("Невозможно продолжить обучение BPE токенизатора.")
+            return
+
+    except pd.errors.EmptyDataError:
+        print(f"Ошибка: Файл метаданных {args.metadata_path} пуст.")
+        print("Невозможно продолжить обучение BPE токенизатора.")
+        return
+    except Exception as e:
+        print(f"Произошла непредвиденная ошибка при чтении файла метаданных {args.metadata_path}: {e}")
+        print("Пожалуйста, проверьте формат вашего файла метаданных.")
+        return
+
+    if not texts:
+        print(f"Не удалось извлечь текстовые данные из {args.metadata_path}. Обучение BPE токенизатора не может быть продолжено.")
+        return
 
     new_tokenizer = Tokenizer(BPE())
     new_tokenizer.pre_tokenizer = Whitespace()
@@ -138,7 +179,7 @@ def extend_tokenizer(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--output_path", default=os.path.join("run", "training"), type=str, required=False, help="Путь до папки XTTS_v2.0_original_model_files")
-    parser.add_argument("--metadata_path", default=os.path.join("datasets", "metadata_half.csv"), type=str, required=False, help="Путь до корпуса (metadata.csv)")
-    parser.add_argument("--extended_vocab_size", default=1200, type=int, required=False, help="Размер расширенного словаря")
+    parser.add_argument("--metadata_path", default=os.path.join("datasets", "mixed", "metadata.txt"), type=str, required=False, help="Путь до корпуса (metadata.txt)")
+    parser.add_argument("--extended_vocab_size", default=500, type=int, required=False, help="Размер расширенного словаря")
     args = parser.parse_args()
     extend_tokenizer(args)

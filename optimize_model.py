@@ -91,7 +91,7 @@ def main():
                     "Оптимизированная модель сохраняется как 'optimized_model.pth' в той же директории, что и входная модель."
     )
     parser.add_argument(
-        "--input_model_path",
+        "--input_file",
         type=str,
         required=True,
         help="Путь к файлу натренированной модели XTTS (.pth) для оптимизации.",
@@ -105,8 +105,8 @@ def main():
 
     args = parser.parse_args()
 
-    print(f"Запуск оптимизации модели для: {args.input_model_path}")
-    success = optimize_model_standalone(args.input_model_path, args.delete_original)
+    print(f"Запуск оптимизации модели для: {args.input_file}")
+    success = optimize_model_standalone(args.input_file, args.delete_original)
 
     if success:
         print("Процесс оптимизации успешно завершен.")

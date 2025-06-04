@@ -28,7 +28,7 @@ GRAD_ACUMM_STEPS = 84  # set here the grad accumulation steps
 config_dataset = BaseDatasetConfig(
     formatter="ljspeech",
     dataset_name="ljspeech",
-    path= os.path.join(os.path.dirname(os.path.abspath(__file__)), "datasets", "google"), 
+    path= os.path.join(os.path.dirname(os.path.abspath(__file__)), "datasets", "mixed"), 
     meta_file_train="metadata.txt",
     language="ru",
 )
@@ -85,7 +85,7 @@ def main():
         max_conditioning_length=132300,  # 6 secs
         min_conditioning_length=66150,  # 3 secs
         debug_loading_failures=False,
-        max_wav_length=255995,  # ~11.6 seconds
+        max_wav_length=278333,  # ~11.6 seconds
         max_text_length=200,
         mel_norm_file=MEL_NORM_FILE,
         dvae_checkpoint=DVAE_CHECKPOINT,
@@ -98,7 +98,7 @@ def main():
         gpt_use_perceiver_resampler=True,
     )
     # define audio config
-    audio_config = XttsAudioConfig(sample_rate=22050, dvae_sample_rate=22050, output_sample_rate=24000)
+    audio_config = XttsAudioConfig(sample_rate=24000, dvae_sample_rate=22050, output_sample_rate=24000)
     # training parameters config
     config = GPTTrainerConfig(
         output_path=OUT_PATH,
@@ -129,7 +129,7 @@ def main():
         optimizer="AdamW",
         optimizer_wd_only_on_weights=OPTIMIZER_WD_ONLY_ON_WEIGHTS,
         optimizer_params={"betas": [0.9, 0.96], "eps": 1e-8, "weight_decay": 1e-2},
-        lr=5e-06,  # learning rate
+        lr=4e-06,  # learning rate
         lr_scheduler="MultiStepLR",
         # it was adjusted accordly for the new step scheme
         lr_scheduler_params={"milestones": [15000, 30000, 40000, 50000, 60000], "gamma": 0.5, "last_epoch": -1},
@@ -140,7 +140,7 @@ def main():
                 "language": LANGUAGE,
             },
             {
-                "text": "Па́па смущённо проси́л нас: Ну́-ка, спо́йте, ребя́та, что-нибу́дь то́лько гро́мче, чтоб она́ оберну́лась.",
+                "text": "Па́па смущённо проси́л нас: Ну́-ка, спо́йте, ребя́та, что-нибу́дь, то́лько гро́мче, чтоб она́ оберну́лась.",
                 "speaker_wav": SPEAKER_REFERENCE,
                 "language": LANGUAGE,
             },
